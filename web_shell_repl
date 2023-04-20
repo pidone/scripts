@@ -1,0 +1,10 @@
+#!/bin/bash
+
+BASEURL=$1
+PARAMETER=${2:-cmd}
+
+while IFS='$\n' read -r cmd; do
+  echo "============ curl $BASEURL --url-query "$PARAMETER=$cmd" ======="
+  curl -s $BASEURL --url-query "$PARAMETER=$cmd"
+  echo "============================================================================================"
+done

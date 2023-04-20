@@ -1,0 +1,64 @@
+#!/bin/bash
+
+shopt -s lastpipe
+
+read -r CMD
+
+SCRIPT="$0"
+
+# Check if powershell is 32 or 64 bit
+# [Environment]::Is64BitProcess
+# If current powershell is running in 32 bit:
+#   64 Version: C:\Windows\SysNative
+#   32 Version: C:\Windows\SystemWOW64
+# If current powershell is running in 64 bit:
+#   64 Version: C:\Windows\System32
+#   32 Version: C:\Windows\SystemWOW64
+PS_32="C:\\Windows\\SystemWOW\\WindowsPowerShell\\v1.0\\powershell.exe"
+PS_64="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+OPTS="-NoP -NonI -W Hidden -Exec Bypass"
+
+usage() {
+  echo $1
+  echo "$SCRIPT [-e] [-a 32|64]"
+  exit 1
+}
+
+while getopts "hea:" o; do
+  case "${o}" in
+    e)
+      ENCODED=true
+      ;;
+    a)
+      if [[ ${OPTARG} == "32" ]]; then
+        ARCH=32
+      elif [[ ${OPTARG} == "64" ]]; then
+	ARCH=64
+      else
+	usage "wrong arch ${OPTARG}"
+      fi
+      ;;
+    h | *)
+      usage
+      ;;
+  esac
+done
+
+function encode() {
+  echo "$CMD" | iconv -t UNICODELITTLE | base64 | tr -d "\n"
+}
+
+if [ $ENCODED ]; then
+  CMD=$(encode $CMD)
+  OPTS="$OPTS -Encode"
+else
+  OPTS="$OPTS -Command"
+fi
+
+if [[ $ARCH -eq 32 ]];then
+  PS=$PS_32
+else
+  PS=$PS_64
+fi
+
+echo "$PS $OPTS $CMD"

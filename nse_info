@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+SCRIPTS_DIR=/usr/share/nmap/scripts/
+BASE_URL=https://nmap.org/nsedoc/scripts
+
+search=$1
+
+script=$(basename --suffix=.nse -- $SCRIPTS_DIR/*.nse | fzf -1 -q "$search" --preview "curl -s $BASE_URL/{}.html | pup '#nse-content' | html2text")
+
+if [[ -n "$script" ]];then
+  curl -s "$BASE_URL/${script}.html" | pup "#nse-content" | html2text
+fi
