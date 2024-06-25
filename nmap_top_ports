@@ -1,0 +1,13 @@
+#!/bin/bash
+
+NUM_OF_PORTS=${1:-100}
+
+cat /usr/share/nmap/nmap-services \
+	| grep -v "^#" \
+	| grep tcp \
+	| awk '{print $3 " " $2}' \
+	| sort -r \
+	| head -n $NUM_OF_PORTS \
+	| awk '{print $2}' \
+	| awk -F '/' '{print $1}'
+
